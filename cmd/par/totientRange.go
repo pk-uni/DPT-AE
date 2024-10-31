@@ -16,6 +16,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -37,65 +38,53 @@ func relprime(x, y int64) bool {
 	return hcf(x, y) == 1
 }
 
-// euler(n) computes the Euler totient function, i.e. counts the number of
-// positive integers up to n that are relatively prime to n
-func euler(n int64) int64 {
-	var length int64
-	var i int64
-	// do parallel magic here
-	for i = 1; i < n; i++ {
-		if relprime(n, i) {
-			length++
-		}
-	}
-	return length
-}
-
-// sumTotient lower upper sums the Euler totient values for all numbers
-// between "lower" and "upper".
-func sumTotient(lower, upper int64) int64 {
-	var sum int64
-
-	for i := lower; i <= upper; i++ {
-		sum += euler(i)
-	}
-	return sum
-}
-
-func something(lower, upper int64) int64 {
+func sumTotientPar(lower, upper int64) int64 {
 
 	numWorkers := runtime.NumCPU()
 
-	sumJobs := make(chan int64, numWorkers*3)
-	results := make(chan int64)
+	jobs := make(chan int64, upper-lower)
+	results := make(chan int64, upper-lower)
 
-	for i := lower; i <= upper; i++ {
-		sumJobs <- i
+	var wg sync.WaitGroup
+
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go eulerWorker(jobs, results, &wg)
 	}
 
-	var sum int64
 	go func() {
-		sum += <-results
+		for i := lower; i <= upper; i++ {
+			jobs <- i
+		}
+		close(jobs)
 	}()
 
 	go func() {
-		<-results
-		close(sumJobs)
+		wg.Wait()
 		close(results)
 	}()
+
+	var sum int64
+	for r := range results {
+		sum += r
+	}
 
 	return sum
 
 }
 
-func eulerWorker(sumJobs <-chan int64, results chan<- int64) {
-	var i int64
-	for n := range sumJobs {
+func eulerWorker(jobs <-chan int64, results chan<- int64, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var count, i int64
+
+	for n := range jobs {
+		count = 0
 		for i = 1; i < n; i++ {
 			if relprime(n, i) {
-				results <- i
+				count++
 			}
 		}
+		results <- count
 	}
 }
 
@@ -116,7 +105,7 @@ func main() {
 	}
 
 	start := time.Now()
-	totients := sumTotient(lower, upper)
+	totients := sumTotientPar(lower, upper)
 	elapsed := time.Since(start)
 	fmt.Println("Sum of Totients between", lower, "and", upper, "is", totients)
 	fmt.Println("Elapsed time", elapsed)
