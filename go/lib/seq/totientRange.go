@@ -9,14 +9,7 @@
 // This program calculates the sum of the totients between a lower and an upper
 // limit
 
-package main
-
-import (
-	"fmt"
-	"os"
-	"strconv"
-	"time"
-)
+package seq
 
 // Compute the Highest Common Factor, hcf of two numbers x and y
 // hcf x 0 = x
@@ -51,7 +44,7 @@ func euler(n int64) int64 {
 
 // sumTotient lower upper sums the Euler totient values for all numbers
 // between "lower" and "upper".
-func sumTotient(lower, upper int64) int64 {
+func SumTotient(lower, upper int64) int64 {
 	var sum int64 = 0
 	for i := lower; i <= upper; i++ {
 		sum += euler(i)
@@ -59,25 +52,25 @@ func sumTotient(lower, upper int64) int64 {
 	return sum
 }
 
-func main() {
-	var lower, upper int64
-	var err error
-	// Read and validate lower and upper arguments
-	if len(os.Args) < 3 {
-		panic(fmt.Sprintf("Usage: must provide lower and upper range limits as arguments"))
-	}
+// func main() {
+// 	var lower, upper int64
+// 	var err error
+// 	// Read and validate lower and upper arguments
+// 	if len(os.Args) < 3 {
+// 		panic(fmt.Sprintf("Usage: must provide lower and upper range limits as arguments"))
+// 	}
 
-	// Go if supports "If with a short statement"
-	if lower, err = strconv.ParseInt(os.Args[1], 10, 64); err != nil {
-		panic(fmt.Sprintf("Can't parse first argument"))
-	}
-	if upper, err = strconv.ParseInt(os.Args[2], 10, 64); err != nil {
-		panic(fmt.Sprintf("Can't parse second argument"))
-	}
+// 	// Go if supports "If with a short statement"
+// 	if lower, err = strconv.ParseInt(os.Args[1], 10, 64); err != nil {
+// 		panic(fmt.Sprintf("Can't parse first argument"))
+// 	}
+// 	if upper, err = strconv.ParseInt(os.Args[2], 10, 64); err != nil {
+// 		panic(fmt.Sprintf("Can't parse second argument"))
+// 	}
 
-	start := time.Now()
-	totients := sumTotient(lower, upper)
-	elapsed := time.Since(start)
-	fmt.Println("Sum of Totients between", lower, "and", upper, "is", totients)
-	fmt.Println("Elapsed time", elapsed)
-}
+// 	start := time.Now()
+// 	totients := SumTotient(lower, upper)
+// 	elapsed := time.Since(start)
+// 	fmt.Println("Sum of Totients between", lower, "and", upper, "is", totients)
+// 	fmt.Println("Elapsed time", elapsed)
+// }
