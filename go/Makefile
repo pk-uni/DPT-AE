@@ -1,7 +1,5 @@
-# Go command
-GO = go
-
 # Build settings
+GO = go
 BUILD_DIR = bin
 BINARY_NAME = totient
 
