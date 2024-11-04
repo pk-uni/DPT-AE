@@ -1,71 +1,42 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
-	"strconv"
-	"time"
+	"totient/internal/bench"
+	"totient/internal/totient"
+	"totient/internal/totient/parallel"
+	"totient/internal/totient/sequential"
+)
 
-	par "totient/internal/totient/parallel"
-	seq "totient/internal/totient/sequential"
+var (
+	mode  = flag.String("mode", "sequential", "execution mode: sequential or parallel")
+	lower = flag.Int64("lower", 1, "lower bound of range")
+	upper = flag.Int64("upper", 1000, "upper bound of range")
+	runs  = flag.Int("runs", 1, "number of runs to execute")
 )
 
 func main() {
-	if len(os.Args) < 4 {
-		panic(fmt.Sprintf("Usage: must provide either 'seq' or 'par' as first argument"))
+	flag.Parse()
+
+	var calculator totient.Calculator
+	switch *mode {
+	case "sequential", "seq":
+		calculator = sequential.New()
+	case "parallel", "par":
+		calculator = parallel.New()
+	default:
+		fmt.Fprintf(os.Stderr, "invalid mode: %s\n", *mode)
+		flag.Usage()
+		os.Exit(1)
 	}
 
-	if os.Args[1] == "seq" {
-		runSeq()
-	} else if os.Args[1] == "par" {
-		runPar()
+	runner := bench.NewRunner(calculator)
+
+	if *runs > 1 {
+		runner.RunN(*lower, *upper, *runs)
 	} else {
-		panic(fmt.Sprintf("Usage: first argument must be either 'seq' or 'par'"))
+		runner.Run(*lower, *upper)
 	}
-}
-
-func runPar() {
-	var lower, upper int64
-	var err error
-	// Read and validate lower and upper arguments
-	if len(os.Args) < 3 {
-		panic(fmt.Sprintf("Usage: must provide lower and upper range limits as arguments"))
-	}
-
-	// Go if supports "If with a short statement"
-	if lower, err = strconv.ParseInt(os.Args[1], 10, 64); err != nil {
-		panic(fmt.Sprintf("Can't parse first argument"))
-	}
-	if upper, err = strconv.ParseInt(os.Args[2], 10, 64); err != nil {
-		panic(fmt.Sprintf("Can't parse second argument"))
-	}
-
-	start := time.Now()
-	totients := par.SumTotient(lower, upper)
-	elapsed := time.Since(start)
-	fmt.Println("Sum of Totients between", lower, "and", upper, "is", totients)
-	fmt.Println("Elapsed time", elapsed)
-}
-
-func runSeq() {
-	var lower, upper int64
-	var err error
-	// Read and validate lower and upper arguments
-	if len(os.Args) < 3 {
-		panic(fmt.Sprintf("Usage: must provide lower and upper range limits as arguments"))
-	}
-
-	// Go if supports "If with a short statement"
-	if lower, err = strconv.ParseInt(os.Args[1], 10, 64); err != nil {
-		panic(fmt.Sprintf("Can't parse first argument"))
-	}
-	if upper, err = strconv.ParseInt(os.Args[2], 10, 64); err != nil {
-		panic(fmt.Sprintf("Can't parse second argument"))
-	}
-
-	start := time.Now()
-	totients := seq.SumTotient(lower, upper)
-	elapsed := time.Since(start)
-	fmt.Println("Sum of Totients between", lower, "and", upper, "is", totients)
-	fmt.Println("Elapsed time", elapsed)
 }
