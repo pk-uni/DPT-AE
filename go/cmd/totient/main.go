@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"totientRange/lib/par"
-	"totientRange/lib/seq"
+	par "totient/internal/totient/parallel"
+	seq "totient/internal/totient/sequential"
 )
 
 func main() {

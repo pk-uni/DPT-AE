@@ -9,7 +9,7 @@
 // This program calculates the sum of the totients between a lower and an upper
 // limit
 
-package seq
+package sequential
 
 // Compute the Highest Common Factor, hcf of two numbers x and y
 // hcf x 0 = x

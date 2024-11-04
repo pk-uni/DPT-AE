@@ -9,7 +9,7 @@
 // This program calculates the sum of the totients between a lower and an upper
 // limit
 
-package par
+package parallel
 
 import (
 	"runtime"
