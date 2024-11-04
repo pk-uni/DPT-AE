@@ -81,7 +81,7 @@ int main(int argc, char ** argv) {
 
   double time_taken_ns = 1000000000L * (end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec;
 
-  printf("C: Sum of Totients  between [%ld..%ld] is %ld\n",
+  printf("C: Sum of Totients  between [%lld..%lld] is %lld\n",
          lower, upper, sum);
   printf("Time Taken: %f s\n", time_taken_ns / 1000 / 1000 / 1000);
 
