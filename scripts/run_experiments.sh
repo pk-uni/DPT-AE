@@ -65,8 +65,13 @@ for i in "${!DATASETS[@]}"; do
     size="${DATASETS[i]}"
 
     echo "Processing $label (size: $size)"
-    run_sequential "$label" "$size"
-    
+
+    if [[ $i != 2 ]]; then
+        run_sequential "$label" "$size"
+    else
+       echo "Skipping sequential runs for $label (size: $size)"
+    fi
+
     for cores in "${CORE_COUNTS[@]}"; do
         run_parallel "$label" "$size" "$cores"
     done
