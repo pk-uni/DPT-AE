@@ -1,5 +1,5 @@
 # Compiler settings
-CC = gcc-14
+CC = gcc # use gcc-14 on πac
 CFLAGS = -Wall -O3
 OMPFLAGS = -fopenmp
 

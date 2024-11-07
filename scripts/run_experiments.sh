@@ -61,7 +61,7 @@ echo "Starting experiments..."
 echo "-------------------"
 
 for i in "${!DATASETS[@]}"; do
-    label="DS1$($i+1)"
+    label="DS1$(i+1)"
     size="${DATASETS[i]}"
 
     echo "Processing $label (size: $size)"
@@ -73,13 +73,6 @@ for i in "${!DATASETS[@]}"; do
     
     echo "$label complete"
     echo "-------------------"
-done
-
-
-
-AR=('foo' 'bar' 'baz' 'bat')
-for i in "${!AR[@]}"; do
-  printf '${AR[%s]}=%s\n' "$i" "${AR[i]}"
 done
 
 echo "All done!"
