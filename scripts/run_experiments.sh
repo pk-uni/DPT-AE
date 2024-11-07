@@ -61,7 +61,8 @@ echo "Starting experiments..."
 echo "-------------------"
 
 for i in "${!DATASETS[@]}"; do
-    label="DS1$(i+1)"
+    idx=$((i+1))
+    label="DS$idx"
     size="${DATASETS[i]}"
 
     echo "Processing $label (size: $size)"
