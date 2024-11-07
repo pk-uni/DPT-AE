@@ -7,10 +7,6 @@ import (
 
 type Sequential struct{}
 
-func New() *Sequential {
-	return &Sequential{}
-}
-
 func (s *Sequential) Calculate(lower, upper int64) totient.Result {
 	start := time.Now()
 

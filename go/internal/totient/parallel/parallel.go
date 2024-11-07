@@ -1,7 +1,6 @@
 package parallel
 
 import (
-	"runtime"
 	"sync"
 	"time"
 	"totient/internal/totient"
@@ -9,12 +8,6 @@ import (
 
 type Parallel struct {
 	NumWorkers int
-}
-
-func New() *Parallel {
-	return &Parallel{
-		NumWorkers: runtime.NumCPU(),
-	}
 }
 
 func (p *Parallel) Calculate(lower, upper int64) totient.Result {

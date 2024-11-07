@@ -1,47 +1,88 @@
 #!/bin/bash
 
-# Configuration
 DATASETS=(1500 3000 6000)
+CORE_COUNTS=(1 2 4 8 12 16 24 32 48 64)
 RUNS=5
 RESULTS_DIR="data/results"
+CSV_FILE="$RESULTS_DIR/results.csv"
+
 
 mkdir -p "$RESULTS_DIR"
 
-# Function to run experiment for a specific dataset
-run_experiment() {
-    local size=$1
-    local dataset_num=$2
-    echo "Running Dataset $dataset_num (range: 1 to $size)..."
+# initialize CSV file
+echo "dataset,language,implementation,runtime_median,core_count" > "$CSV_FILE"
 
-    # C Sequential
-    echo "Running C Sequential..."
-    echo "C Sequential:" > "$RESULTS_DIR/c_seq_ds${dataset_num}.txt"
-    ./c/bin/sequential/totient 1 "$size" >> "$RESULTS_DIR/c_seq_ds${dataset_num}.txt"
 
-    # C Parallel
-    echo "Running C Parallel..."
-    echo "C Parallel:" > "$RESULTS_DIR/c_par_ds${dataset_num}.txt"
-    ./c/bin/parallel/totient 1 "$size" >> "$RESULTS_DIR/c_par_ds${dataset_num}.txt"
-
-    # Go Sequential
-    echo "Running Go Sequential..."
-    echo "Go Sequential:" > "$RESULTS_DIR/go_seq_ds${dataset_num}.txt"
-    ./go/bin/totient -mode=sequential -lower=1 -upper="$size" -runs="$RUNS" >> "$RESULTS_DIR/go_seq_ds${dataset_num}.txt"
-
-    # Go Parallel
-    echo "Running Go Parallel..."
-    echo "Go Parallel:" > "$RESULTS_DIR/go_par_ds${dataset_num}.txt"
-    ./go/bin/totient -mode=parallel -lower=1 -upper="$size" -runs="$RUNS" >> "$RESULTS_DIR/go_par_ds${dataset_num}.txt"
+extract_median_time() {
+    local file=$1
+    grep "Median Time Taken:" "$file" | awk '{print $4}'
 }
 
-# Main execution
+run_sequential() {
+    local label=$1
+    local size=$2
+    local output_file
+
+    echo "Running C Sequential..."
+    output_file="$RESULTS_DIR/c_seq_${label}.txt"
+    ./c/bin/sequential/totient 1 "$size" > "$output_file"
+    local time=$(extract_median_time "$output_file")
+    echo "$label,c,seq,$time,1" >> "$CSV_FILE"
+
+    echo "Running Go Sequential..."
+    output_file="$RESULTS_DIR/go_seq_${label}.txt"
+    ./go/bin/totient -mode=sequential -lower=1 -upper="$size" -runs="$RUNS" > "$output_file"
+    time=$(extract_median_time "$output_file")
+    echo "$label,go,seq,$time,1" >> "$CSV_FILE"
+}
+
+run_parallel() {
+    local label=$1
+    local size=$2
+    local cores=$3
+    local output_file
+
+    echo "Running C Parallel with $cores cores..."
+    output_file="$RESULTS_DIR/c_par_${label}_${cores}.txt"
+    export OMP_NUM_THREADS=$cores
+    ./c/bin/parallel/totient 1 "$size" > "$output_file"
+    local time=$(extract_median_time "$output_file")
+    echo "$label,c,par,$time,$cores" >> "$CSV_FILE"
+
+    echo "Running Go Parallel with $cores goroutines..."
+    output_file="$RESULTS_DIR/go_par_${label}_${cores}.txt"
+    ./go/bin/totient -mode=parallel -lower=1 -upper="$size" -runs="$RUNS" -maxThreads="$cores" > "$output_file"
+    time=$(extract_median_time "$output_file")
+    echo "$label,go,par,$time,$cores" >> "$CSV_FILE"
+}
+
+
 echo "Starting experiments..."
+echo "-------------------"
 
 for i in "${!DATASETS[@]}"; do
-    dataset_num=$((i + 1))
-    run_experiment "${DATASETS[$i]}" "$dataset_num"
-    echo "Dataset $dataset_num complete"
+    label="DS1$($i+1)"
+    size="${DATASETS[i]}"
+
+    echo "Processing $label (size: $size)"
+    run_sequential "$label" "$size"
+    
+    for cores in "${CORE_COUNTS[@]}"; do
+        run_parallel "$label" "$size" "$cores"
+    done
+    
+    echo "$label complete"
     echo "-------------------"
 done
 
-echo "All experiments complete!"
+
+
+AR=('foo' 'bar' 'baz' 'bat')
+for i in "${!AR[@]}"; do
+  printf '${AR[%s]}=%s\n' "$i" "${AR[i]}"
+done
+
+echo "All done!"
+echo "Results have been saved to:"
+echo "- CSV file: $CSV_FILE"
+echo "- Individual run logs: $RESULTS_DIR/*.txt"

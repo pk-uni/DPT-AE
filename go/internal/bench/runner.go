@@ -2,7 +2,7 @@ package bench
 
 import (
 	"fmt"
-	"slices"
+	"sort"
 	"time"
 	"totient/internal/totient"
 )
@@ -53,7 +53,7 @@ func (r *Runner) printMedianResult(results []totient.Result) {
 		times[i] = r.TimeElapsed
 	}
 
-	slices.Sort(times)
+	sort.Float64s(times)
 
 	var median float64
 	if n%2 == 0 {
@@ -62,5 +62,6 @@ func (r *Runner) printMedianResult(results []totient.Result) {
 		median = times[n/2]
 	}
 
-	fmt.Printf("Median time taken: %.3f seconds\n", median)
+	fmt.Printf("Sum of Totients between [%d..%d] is %d\n", results[0].Lower, results[0].Upper, results[0].Sum)
+	fmt.Printf("Median Time Taken: %.6f s\n", median)
 }
