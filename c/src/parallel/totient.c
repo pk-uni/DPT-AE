@@ -44,13 +44,19 @@ int relprime(int64_t x, int64_t y) {
   return hcf(x, y) == 1;
 }
 
-// euler n = length (filter (relprime n) [1 .. n-1])
+/**
+ * Computes the Euler's Totient function for a given integer n.
+ */
 int64_t euler(int64_t n) {
   int64_t length = 0;
+  
+  // Use OpenMP to parallelize the reduction operation on length
   #pragma omp parallel reduction(+:length)
   {
+    // Distribute the loop iterations dynamically with a chunk size of 100
     #pragma omp for schedule(dynamic, 100)
     for (int64_t i = 1; i < n; i++) {
+      // Increment length if i is coprime with n
       if (relprime(n, i)) {
         length++;
       }
@@ -60,13 +66,19 @@ int64_t euler(int64_t n) {
 }
 
 
-// sumTotient lower upper = sum (map euler [lower, lower+1 .. upper])
+/**
+ * Computes the sum of Euler's Totient function values for all integers in the range [lower, upper].
+ */
 int64_t sumTotient(int64_t lower, int64_t upper) {
   int64_t sum = 0;
+  
+  // Use OpenMP to parallelize the reduction operation on sum
   #pragma omp parallel reduction(+:sum)
   {
+    // Distribute the loop iterations dynamically with a chunk size of 1
     #pragma omp for schedule(dynamic, 1)
     for (int64_t i = lower; i <= upper; i++) {
+      // Add the Totient function value of i to sum
       sum = sum + euler(i);
     }
   }

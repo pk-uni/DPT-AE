@@ -3,8 +3,14 @@ import matplotlib.pyplot as plt
 
 RESULTS_DIR = "data"
 
-def runtime_graph(df, dataset, log=False, no_seq=False, show=True):
+config = {
+    "title.fontsize": 20,
+    "axisLabel.fontsize": 18,
+    "legend.fontsize": 16,
+}
 
+
+def runtime_graph(df, dataset, log=False, no_seq=False, show=True):
     plt.figure(figsize=(12, 8))
 
     # Plot parallel implementations
@@ -18,22 +24,30 @@ def runtime_graph(df, dataset, log=False, no_seq=False, show=True):
              marker='s', label='Go Parallel', 
              color='#2ca02c', linewidth=2)
 
+    # Calculate ideal scaling line
     if not no_seq:
-        # Add sequential lines if they exist
+        # Use sequential times if available
         c_seq = df[(df['language'] == 'c') & (df['implementation'] == 'seq')]['runtime_median'].iloc[0]
         go_seq = df[(df['language'] == 'go') & (df['implementation'] == 'seq')]['runtime_median'].iloc[0]
         
         plt.axhline(y=c_seq, color='#1f77b4', linestyle=':', label='C Sequential', alpha=0.7)
         plt.axhline(y=go_seq, color='#2ca02c', linestyle=':', label='Go Sequential', alpha=0.7)
-
-        # Calculate ideal scaling using the faster sequential time as baseline
+        
         sequential_time = min(c_seq, go_seq)
-        core_counts = df['core_count'].unique()
-        ideal_times = [sequential_time/n for n in core_counts]
-        plt.plot(core_counts, ideal_times, '--', 
-                label='Ideal Scaling', color='#7f7f7f', linewidth=2)
+    else:
+        # For DS3, use the first measurement point (8 cores) to extrapolate ideal line
+        first_core_count = df['core_count'].min()  # Should be 8 for DS3
+        first_runtime = df[df['core_count'] == first_core_count]['runtime_median'].min()
+        sequential_time = first_runtime * first_core_count  # Extrapolate back to 1 core
 
+    # Plot ideal scaling line
+    core_counts = df['core_count'].unique()
+    ideal_times = [sequential_time/n for n in core_counts]
+    plt.plot(core_counts, ideal_times, '--', label='Ideal Scaling', color='#7f7f7f', linewidth=2)
 
+    # Add vertical lines for physical cores and hardware threads
+    plt.axvline(x=16, color='#5a189a', linestyle='-.', alpha=0.5, label='Physical Cores (16)')
+    plt.axvline(x=32, color='#b185db', linestyle='-.', alpha=0.5, label='Hardware Threads (32)')
 
     tag = ""
     if log:
@@ -43,12 +57,11 @@ def runtime_graph(df, dataset, log=False, no_seq=False, show=True):
 
     plt.grid(True, which="both", ls="-", alpha=0.2)
 
-    plt.xlabel('Number of Cores', fontsize=12)
-    plt.ylabel('Runtime (seconds)', fontsize=12)
-    subtitle = "Parallel" if no_seq else "Actual vs Ideal Scaling"
-    plt.title(f'Runtime Analysis - {dataset.upper()}\n{subtitle}', 
-              fontsize=14, pad=20)
-    plt.legend(fontsize=10)
+    plt.xlabel('Number of Cores', fontsize=config["axisLabel.fontsize"])
+    plt.ylabel('Runtime (seconds)', fontsize=config["axisLabel.fontsize"])
+
+    plt.title("Actual vs Ideal Scaling",fontsize=config["title.fontsize"], pad=20)
+    plt.legend(fontsize=config["legend.fontsize"])
 
     plt.grid(True, which='major', linestyle='-', alpha=0.3)
     plt.grid(True, which='minor', linestyle=':', alpha=0.2)
@@ -84,24 +97,25 @@ def absolute_speedup_graph(df, dataset, show=True):
     # Plot ideal speedup line (y = x line)
     core_counts = df['core_count'].unique()
     ideal_speedup = core_counts  # Ideal speedup equals number of cores
-    plt.plot(core_counts, ideal_speedup, '--', 
-             label='Ideal Speedup', color='#7f7f7f', linewidth=2)
+    plt.plot(core_counts, ideal_speedup, '--', label='Ideal Speedup', color='#7f7f7f', linewidth=2)
+
+    # Add vertical lines for physical cores and hardware threads
+    plt.axvline(x=16, color='#5a189a', linestyle='-.', alpha=0.5, label='Physical Cores (16)')
+    plt.axvline(x=32, color='#b185db', linestyle='-.', alpha=0.5, label='Hardware Threads (32)')
 
     plt.grid(True, which="both", ls="-", alpha=0.2)
 
-    plt.xlabel('Number of Cores', fontsize=12)
-    plt.ylabel('Speedup', fontsize=12)
-    plt.title(f'Speedup Analysis - {dataset.upper()}\nAbsolute Speedup vs. Number of Cores', 
-              fontsize=14, pad=20)
-    plt.legend(fontsize=10)
+    plt.xlabel('Number of Cores', fontsize=config["axisLabel.fontsize"])
+    plt.ylabel('Absolute Speedup', fontsize=config["axisLabel.fontsize"])
+    plt.title('Speedup vs. Number of Cores',fontsize=config["title.fontsize"], pad=20)
+    plt.legend(fontsize=config["legend.fontsize"])
 
     plt.grid(True, which='major', linestyle='-', alpha=0.3)
     plt.grid(True, which='minor', linestyle=':', alpha=0.2)
 
     # Add y=x reference line
     max_speedup = max(max(c_speedup), max(go_speedup))
-    plt.plot([1, max_speedup], [1, max_speedup], ':', 
-             color='red', alpha=0.3, label='Linear Speedup')
+    plt.plot([1, max_speedup], [1, max_speedup], ':', color='red', alpha=0.3, label='Linear Speedup')
 
     plt.tight_layout()
     plt.savefig(f'{RESULTS_DIR}/plots/absolute_speedup_analysis_{dataset}.png', dpi=300, bbox_inches='tight')
@@ -136,23 +150,24 @@ def relative_speedup_graph(df, dataset, baseline_cores=8, show=True):
     # Plot ideal relative speedup line
     core_counts = df['core_count'].unique()
     ideal_speedup = core_counts / baseline_cores  # Relative to baseline core count
-    plt.plot(core_counts, ideal_speedup, '--', 
-             label='Ideal Speedup', color='#7f7f7f', linewidth=2)
+    plt.plot(core_counts, ideal_speedup, '--', label='Ideal Speedup', color='#7f7f7f', linewidth=2)
+
+    # Add vertical lines for physical cores and hardware threads
+    plt.axvline(x=16, color='#5a189a', linestyle='-.', alpha=0.5, label='Physical Cores (16)')
+    plt.axvline(x=32, color='#b185db', linestyle='-.', alpha=0.5, label='Hardware Threads (32)')
 
     plt.grid(True, which="both", ls="-", alpha=0.2)
 
-    plt.xlabel('Number of Cores', fontsize=12)
-    plt.ylabel(f'Relative Speedup (normalized to {baseline_cores} cores)', fontsize=12)
-    plt.title(f'Relative Speedup Analysis - {dataset.upper()}\nSpeedup vs. Number of Cores (Baseline: {baseline_cores} cores)', 
-              fontsize=14, pad=20)
-    plt.legend(fontsize=10)
+    plt.xlabel('Number of Cores', fontsize=config["axisLabel.fontsize"])
+    plt.ylabel(f'Relative Speedup (normalized to {baseline_cores} cores)', fontsize=config["axisLabel.fontsize"])
+    plt.title(f'Speedup vs. Number of Cores (Baseline: {baseline_cores} cores)', fontsize=config["title.fontsize"], pad=20)
+    plt.legend(fontsize=config["legend.fontsize"])
 
     plt.grid(True, which='major', linestyle='-', alpha=0.3)
     plt.grid(True, which='minor', linestyle=':', alpha=0.2)
 
     plt.tight_layout()
-    plt.savefig(f'{RESULTS_DIR}/plots/relative_speedup_analysis_{dataset}.png', 
-                dpi=300, bbox_inches='tight')
+    plt.savefig(f'{RESULTS_DIR}/plots/relative_speedup_analysis_{dataset}.png', dpi=300, bbox_inches='tight')
     if show:
         plt.show()
 
@@ -182,16 +197,14 @@ def efficiency_graph(df, dataset, show=True):
              color='#2ca02c', linewidth=2)
 
     # Plot ideal efficiency line (y = 1 line)
-    plt.axhline(y=1, linestyle='--', color='#7f7f7f', 
-                label='Ideal Efficiency', linewidth=2)
+    plt.axhline(y=1, linestyle='--', color='#7f7f7f', label='Ideal Efficiency', linewidth=2)
 
     plt.grid(True, which="both", ls="-", alpha=0.2)
 
-    plt.xlabel('Number of Cores', fontsize=12)
-    plt.ylabel('Efficiency (Speedup/Cores)', fontsize=12)
-    plt.title(f'Parallel Efficiency Analysis - {dataset.upper()}\nEfficiency vs. Number of Cores', 
-              fontsize=14, pad=20)
-    plt.legend(fontsize=10)
+    plt.xlabel('Number of Cores', fontsize=config["axisLabel.fontsize"])
+    plt.ylabel('Efficiency (Speedup/Cores)', fontsize=config ["axisLabel.fontsize"])
+    plt.title('Efficiency vs. Number of Cores', fontsize=config["title.fontsize"], pad=20)
+    plt.legend(fontsize=config["legend.fontsize"])
 
     plt.grid(True, which='major', linestyle='-', alpha=0.3)
     plt.grid(True, which='minor', linestyle=':', alpha=0.2)
@@ -208,29 +221,26 @@ def efficiency_graph(df, dataset, show=True):
 
 
 def main():
-    SHOW = False
+    SHOW = True
     # Load the data
     ds1_df = pd.read_csv(f"{RESULTS_DIR}/ds1.csv")
     ds2_df = pd.read_csv(f"{RESULTS_DIR}/ds2.csv")
     ds3_df = pd.read_csv(f"{RESULTS_DIR}/ds3.csv")
 
     # Runtime graphs
-    # runtime_graph(ds1_df, "ds1", show=SHOW)
     # runtime_graph(ds1_df, "ds1", log=True, show=SHOW)
-    # runtime_graph(ds2_df, "ds2", show=SHOW)
-    runtime_graph(ds3_df, "ds3", no_seq=True, show=SHOW)
+    # runtime_graph(ds2_df, "ds2", log=True, show=SHOW)
     runtime_graph(ds3_df, "ds3", no_seq=True, log=True, show=SHOW)
 
-    # # Speedup graphs
+    # Speedup graphs
     # absolute_speedup_graph(ds1_df, "ds1", show=SHOW)
     # absolute_speedup_graph(ds2_df, "ds2", show=SHOW)
-
     # relative_speedup_graph(ds3_df, "ds3", baseline_cores=8, show=SHOW)
 
-
-    # # Efficiency graphs
+    # Efficiency graphs
     # efficiency_graph(ds1_df, "ds1", show=SHOW)
     # efficiency_graph(ds2_df, "ds2", show=SHOW)
+    # efficiency_graph(ds3_df, "ds3", show=SHOW)
 
 
 if __name__ == "__main__":
