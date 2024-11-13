@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 RESULTS_DIR = "data"
 
 config = {
-    "title.fontsize": 20,
-    "axisLabel.fontsize": 18,
-    "legend.fontsize": 16,
+    "title.fontsize": 24,
+    "axisLabel.fontsize": 20,
+    "legend.fontsize": 20,
 }
 
 
@@ -108,7 +108,7 @@ def absolute_speedup_graph(df, dataset, show=True):
     plt.xlabel('Number of Cores', fontsize=config["axisLabel.fontsize"])
     plt.ylabel('Absolute Speedup', fontsize=config["axisLabel.fontsize"])
     plt.title('Speedup vs. Number of Cores',fontsize=config["title.fontsize"], pad=20)
-    plt.legend(fontsize=config["legend.fontsize"])
+    plt.legend(loc="upper left", fontsize=config["legend.fontsize"])
 
     plt.grid(True, which='major', linestyle='-', alpha=0.3)
     plt.grid(True, which='minor', linestyle=':', alpha=0.2)
@@ -230,11 +230,11 @@ def main():
     # Runtime graphs
     # runtime_graph(ds1_df, "ds1", log=True, show=SHOW)
     # runtime_graph(ds2_df, "ds2", log=True, show=SHOW)
-    runtime_graph(ds3_df, "ds3", no_seq=True, log=True, show=SHOW)
+    # runtime_graph(ds3_df, "ds3", no_seq=True, log=True, show=SHOW)
 
     # Speedup graphs
-    # absolute_speedup_graph(ds1_df, "ds1", show=SHOW)
-    # absolute_speedup_graph(ds2_df, "ds2", show=SHOW)
+    absolute_speedup_graph(ds1_df, "ds1", show=SHOW)
+    absolute_speedup_graph(ds2_df, "ds2", show=SHOW)
     # relative_speedup_graph(ds3_df, "ds3", baseline_cores=8, show=SHOW)
 
     # Efficiency graphs
