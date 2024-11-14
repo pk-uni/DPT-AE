@@ -58,10 +58,10 @@ def runtime_graph(df, dataset, log=False, no_seq=False, show=True):
     plt.grid(True, which="both", ls="-", alpha=0.2)
 
     plt.xlabel('Number of Cores', fontsize=config["axisLabel.fontsize"])
-    plt.ylabel('Runtime (seconds)', fontsize=config["axisLabel.fontsize"])
+    plt.ylabel('Runtime (s)', fontsize=config["axisLabel.fontsize"])
 
-    plt.title("Actual vs Ideal Scaling",fontsize=config["title.fontsize"], pad=20)
-    plt.legend(fontsize=config["legend.fontsize"])
+    plt.title(f"Go and OpenMP Runtimes - {dataset.upper()}",fontsize=config["title.fontsize"], pad=20)
+    plt.legend(loc="lower left", fontsize=config["legend.fontsize"])
 
     plt.grid(True, which='major', linestyle='-', alpha=0.3)
     plt.grid(True, which='minor', linestyle=':', alpha=0.2)
@@ -106,8 +106,8 @@ def absolute_speedup_graph(df, dataset, show=True):
     plt.grid(True, which="both", ls="-", alpha=0.2)
 
     plt.xlabel('Number of Cores', fontsize=config["axisLabel.fontsize"])
-    plt.ylabel('Absolute Speedup', fontsize=config["axisLabel.fontsize"])
-    plt.title('Speedup vs. Number of Cores',fontsize=config["title.fontsize"], pad=20)
+    plt.ylabel('Speedup', fontsize=config["axisLabel.fontsize"])
+    plt.title(f'Go and OpenMP Absolute Speedup - {dataset.upper()}',fontsize=config["title.fontsize"], pad=20)
     plt.legend(loc="upper left", fontsize=config["legend.fontsize"])
 
     plt.grid(True, which='major', linestyle='-', alpha=0.3)
@@ -159,8 +159,8 @@ def relative_speedup_graph(df, dataset, baseline_cores=8, show=True):
     plt.grid(True, which="both", ls="-", alpha=0.2)
 
     plt.xlabel('Number of Cores', fontsize=config["axisLabel.fontsize"])
-    plt.ylabel(f'Relative Speedup (normalized to {baseline_cores} cores)', fontsize=config["axisLabel.fontsize"])
-    plt.title(f'Speedup vs. Number of Cores (Baseline: {baseline_cores} cores)', fontsize=config["title.fontsize"], pad=20)
+    plt.ylabel(f'Speedup (normalized to {baseline_cores} cores)', fontsize=config["axisLabel.fontsize"])
+    plt.title(f'Go and OpenMP Relative Speedup - {dataset.upper()}', fontsize=config["title.fontsize"], pad=20)
     plt.legend(fontsize=config["legend.fontsize"])
 
     plt.grid(True, which='major', linestyle='-', alpha=0.3)
@@ -228,14 +228,14 @@ def main():
     ds3_df = pd.read_csv(f"{RESULTS_DIR}/ds3.csv")
 
     # Runtime graphs
-    # runtime_graph(ds1_df, "ds1", log=True, show=SHOW)
-    # runtime_graph(ds2_df, "ds2", log=True, show=SHOW)
-    # runtime_graph(ds3_df, "ds3", no_seq=True, log=True, show=SHOW)
+    runtime_graph(ds1_df, "ds1", log=True, show=SHOW)
+    runtime_graph(ds2_df, "ds2", log=True, show=SHOW)
+    runtime_graph(ds3_df, "ds3", no_seq=True, log=True, show=SHOW)
 
     # Speedup graphs
     absolute_speedup_graph(ds1_df, "ds1", show=SHOW)
     absolute_speedup_graph(ds2_df, "ds2", show=SHOW)
-    # relative_speedup_graph(ds3_df, "ds3", baseline_cores=8, show=SHOW)
+    relative_speedup_graph(ds3_df, "ds3", baseline_cores=8, show=SHOW)
 
     # Efficiency graphs
     # efficiency_graph(ds1_df, "ds1", show=SHOW)
