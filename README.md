@@ -2,7 +2,7 @@
 
 ## Stage 1
 
-C+OpenMP vs Go
+`OpenMP` vs `Go`
 
 ### Overview
 
@@ -18,7 +18,7 @@ Both versions for both languages were tested with the three different datasets, 
 
 ## Stage 2
 
-Erlang
+`Erlang`
 
 This tests the performance of the Erlang's actor model for parallelism.
 
