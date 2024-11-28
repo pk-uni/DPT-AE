@@ -1,31 +1,36 @@
 -module(parallel).
--import(sequential, [euler/1]).
+-import(sequential, [euler/1, printElapsed/2]).
 -export([start/3]).
 
 start(Lower, Upper, NumWorkers) ->
-    ParentPid = self(),
+    {_, S, US} = os:timestamp(),
 
-    ServerState = #{
-        current => Lower,
-        upper => Upper,
-        results => [],
-        active_workers => NumWorkers,
-        parent => ParentPid
-    },
+    ServerState = initialize_server_state(Lower, Upper, NumWorkers),
 
     ServerPid = spawn(fun() -> server(ServerState) end),
     Workers = [spawn(fun() -> worker(ServerPid) end) || _ <- lists:seq(1, NumWorkers)],
 
-    sumTotient(Lower, Upper, Workers).
-
-sumTotient(Lower, Upper, Workers) ->
     receive
         {done, Results} ->
-            [WorkerPid ! {stop, self()} || WorkerPid <- Workers],
-            wait_workers(length(Workers)),
-            io:format("Sum of totients from ~p to ~p is ~p~n", [Lower, Upper, lists:sum(Results)]),
-            ok
-    end.
+            shutdown_workers(Workers),
+            Sum = lists:sum(Results),
+            io:format("Sum of totients: ~p~n", [Sum])
+    end,
+
+    printElapsed(S, US).
+
+initialize_server_state(Lower, Upper, NumWorkers) ->
+    #{
+        current => Lower,
+        upper => Upper,
+        results => [],
+        active_workers => NumWorkers,
+        parent => self()
+    }.
+
+shutdown_workers(Workers) ->
+    [WorkerPid ! {stop, self()} || WorkerPid <- Workers],
+    wait_workers(length(Workers)).
 
 wait_workers(0) ->
     ok;
@@ -44,24 +49,29 @@ server(
     } = State
 ) ->
     receive
-        {ready, WorkerPid} ->
+        % worker is ready & we have work
+        {ready, WorkerPid} when Current =< Upper ->
             WorkerPid ! {work, Current},
             server(State#{current := Current + 1});
+        % worker is ready & we have no work
+        {ready, _WorkerPid} ->
+            server(State);
+        % worker has completed work & we have no more work & is the last worker
+        {result, Count, _WorkerPid} when Current > Upper, ActiveWorkers =:= 1 ->
+            ParentPid ! {done, [Count | Results]};
+        % worker has completed work & we have no more work & is not the last worker
+        {result, Count, _WorkerPid} when Current > Upper ->
+            server(State#{
+                results := [Count | Results],
+                active_workers := ActiveWorkers - 1
+            });
+        % worker has completed work & we have more work
         {result, Count, WorkerPid} ->
-            case Current > Upper of
-                true ->
-                    case ActiveWorkers of
-                        1 ->
-                            ParentPid ! {done, [Count | Results]};
-                        _ ->
-                            server(State#{
-                                results := [Count | Results], active_workers := ActiveWorkers - 1
-                            })
-                    end;
-                false ->
-                    WorkerPid ! {work, Current},
-                    server(State#{current := Current + 1, results := [Count | Results]})
-            end
+            WorkerPid ! {work, Current},
+            server(State#{
+                current := Current + 1,
+                results := [Count | Results]
+            })
     end.
 
 worker(ServerPid) ->
@@ -70,11 +80,13 @@ worker(ServerPid) ->
 
 worker_loop(ServerPid) ->
     receive
-        {work, N} ->
-            Count = sequential:euler(N),
+        % server has work for us
+        {work, Number} ->
+            Count = sequential:euler(Number),
             ServerPid ! {result, Count, self()},
             worker_loop(ServerPid);
-        {stop, AccumulatorPid} ->
-            AccumulatorPid ! worker_stopped,
+        % parent has told us to stop
+        {stop, ParentPid} ->
+            ParentPid ! worker_stopped,
             ok
     end.

@@ -1,5 +1,5 @@
 -module(sequential).
--export([hcf/2, relprime/2, euler/1, sumTotient/2]).
+-export([hcf/2, relprime/2, euler/1, sumTotient/2, printElapsed/2]).
 
 %% TotientRange.erl - Sequential Euler Totient Function (Erlang Version)
 %% compile from the shell: >c(totientrange).
