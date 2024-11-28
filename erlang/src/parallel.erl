@@ -1,85 +1,80 @@
 -module(parallel).
--import(sequential, [euler/1, printElapsed/2]).
--export([sumTotient/2]).
+-import(sequential, [euler/1]).
+-export([start/3]).
 
-sumTotient(Lower, Upper) ->
-    io:format("Starting with range ~p to ~p~n", [Lower, Upper]),
-    ChunkSize = 10,
-    NumWorkers = 4,
+start(Lower, Upper, NumWorkers) ->
+    ParentPid = self(),
 
-    Server = spawn(fun() ->
-        server(Lower, Upper, ChunkSize, NumWorkers, 0, self())
-    end),
+    ServerState = #{
+        current => Lower,
+        upper => Upper,
+        results => [],
+        active_workers => NumWorkers,
+        parent => ParentPid
+    },
 
-    [spawn(fun() -> worker(Server) end) || _ <- lists:seq(1, NumWorkers)],
+    ServerPid = spawn(fun() -> server(ServerState) end),
+    Workers = [spawn(fun() -> worker(ServerPid) end) || _ <- lists:seq(1, NumWorkers)],
 
-    % Wait for final result
+    sumTotient(Lower, Upper, Workers).
+
+sumTotient(Lower, Upper, Workers) ->
     receive
-        {final_result, FinalSum} ->
-            io:format("Sum of totients: ~p~n", [FinalSum]),
-            FinalSum
+        {done, Results} ->
+            [WorkerPid ! {stop, self()} || WorkerPid <- Workers],
+            wait_workers(length(Workers)),
+            io:format("Sum of totients from ~p to ~p is ~p~n", [Lower, Upper, lists:sum(Results)]),
+            ok
     end.
 
-server(Current, Upper, ChunkSize, ActiveWorkers, AccSum, ParentPid) ->
-    io:format(
-        "Server state: Current=~p, Upper=~p, Active=~p, Sum=~p~n",
-        [Current, Upper, ActiveWorkers, AccSum]
-    ),
+wait_workers(0) ->
+    ok;
+wait_workers(N) ->
+    receive
+        worker_stopped -> wait_workers(N - 1)
+    end.
+
+server(
+    #{
+        current := Current,
+        upper := Upper,
+        results := Results,
+        active_workers := ActiveWorkers,
+        parent := ParentPid
+    } = State
+) ->
     receive
         {ready, WorkerPid} ->
-            io:format("Worker ~p ready~n", [WorkerPid]),
-            handle_worker_ready(
-                Current, Upper, ChunkSize, ActiveWorkers, AccSum, WorkerPid, ParentPid
-            );
-        {result, Range, Sum, WorkerPid} ->
-            io:format("Got result ~p from ~p for range ~p~n", [Sum, WorkerPid, Range]),
-            handle_worker_ready(
-                Current, Upper, ChunkSize, ActiveWorkers, AccSum + Sum, WorkerPid, ParentPid
-            )
+            WorkerPid ! {work, Current},
+            server(State#{current := Current + 1});
+        {result, Count, WorkerPid} ->
+            case Current > Upper of
+                true ->
+                    case ActiveWorkers of
+                        1 ->
+                            ParentPid ! {done, [Count | Results]};
+                        _ ->
+                            server(State#{
+                                results := [Count | Results], active_workers := ActiveWorkers - 1
+                            })
+                    end;
+                false ->
+                    WorkerPid ! {work, Current},
+                    server(State#{current := Current + 1, results := [Count | Results]})
+            end
     end.
 
-handle_worker_ready(Current, Upper, ChunkSize, ActiveWorkers, AccSum, WorkerPid, ParentPid) ->
-    io:format("Handling worker ~p ready, Current=~p, Upper=~p~n", [WorkerPid, Current, Upper]),
-    case Current =< Upper of
-        true ->
-            assign_next_chunk(
-                Current, Upper, ChunkSize, ActiveWorkers, AccSum, WorkerPid, ParentPid
-            );
-        false ->
-            finish_worker(Current, Upper, ChunkSize, ActiveWorkers, AccSum, WorkerPid, ParentPid)
-    end.
+worker(ServerPid) ->
+    ServerPid ! {ready, self()},
+    worker_loop(ServerPid).
 
-assign_next_chunk(Current, Upper, ChunkSize, ActiveWorkers, AccSum, WorkerPid, ParentPid) ->
-    EndOfChunk = min(Current + ChunkSize - 1, Upper),
-    io:format("Assigning chunk ~p-~p to worker ~p~n", [Current, EndOfChunk, WorkerPid]),
-    WorkerPid ! {work, Current, EndOfChunk},
-    server(Current + ChunkSize, Upper, ChunkSize, ActiveWorkers, AccSum, ParentPid).
-
-finish_worker(Current, Upper, ChunkSize, ActiveWorkers, AccSum, WorkerPid, ParentPid) ->
-    io:format("Finishing worker ~p, Active=~p~n", [WorkerPid, ActiveWorkers]),
-    WorkerPid ! stop,
-    case ActiveWorkers - 1 of
-        0 ->
-            io:format("All workers done, sending final result ~p~n", [AccSum]),
-            ParentPid ! {final_result, AccSum};
-        RemainingWorkers ->
-            server(Current, Upper, ChunkSize, RemainingWorkers, AccSum, ParentPid)
-    end.
-
-worker(Server) ->
-    Server ! {ready, self()},
-    worker_loop(Server).
-
-worker_loop(Server) ->
+worker_loop(ServerPid) ->
     receive
-        {work, Start, End} ->
-            io:format("Worker ~p processing range ~p-~p~n", [self(), Start, End]),
-            Sum = lists:sum([euler(N) || N <- lists:seq(Start, End)]),
-            Server ! {result, {Start, End}, Sum, self()},
-            Server ! {ready, self()},
-            % ^ this causes race condition
-            worker_loop(Server);
-        stop ->
-            io:format("Worker ~p stopping~n", [self()]),
+        {work, N} ->
+            Count = sequential:euler(N),
+            ServerPid ! {result, Count, self()},
+            worker_loop(ServerPid);
+        {stop, AccumulatorPid} ->
+            AccumulatorPid ! worker_stopped,
             ok
     end.
