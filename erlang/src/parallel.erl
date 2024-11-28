@@ -1,14 +1,21 @@
 -module(parallel).
 -import(sequential, [euler/1, printElapsed/2]).
+-import(chaos, [workerName/1]).
 -export([start/3]).
 
 start(Lower, Upper, NumWorkers) ->
+    spawn(fun() ->
+        io:format("Starting program with PID ~p~n", [self()]),
+        sumTotient(Lower, Upper, NumWorkers)
+    end).
+
+sumTotient(Lower, Upper, NumWorkers) ->
     {_, S, US} = os:timestamp(),
 
     ServerState = initialize_server_state(Lower, Upper, NumWorkers),
 
     ServerPid = spawn(fun() -> server(ServerState) end),
-    Workers = [spawn(fun() -> worker(ServerPid) end) || _ <- lists:seq(1, NumWorkers)],
+    Workers = [spawn_and_register_worker(ServerPid, N) || N <- lists:seq(1, NumWorkers)],
 
     receive
         {done, Results} ->
@@ -18,6 +25,24 @@ start(Lower, Upper, NumWorkers) ->
     end,
 
     printElapsed(S, US).
+
+% spawn_and_register_worker(ServerPid, N) ->
+%     WorkerPid = spawn(fun() -> worker(ServerPid) end),
+%     Name = workerName(N),
+%     register(Name, WorkerPid),
+%     WorkerPid.
+
+spawn_and_register_worker(ServerPid, N) ->
+    WorkerPid = spawn(fun() -> worker(ServerPid) end),
+    Name = workerName(N),
+    case register(Name, WorkerPid) of
+        true ->
+            io:format("Registered worker ~p with PID ~p~n", [Name, WorkerPid]),
+            WorkerPid;
+        false ->
+            io:format("Failed to register worker ~p (name might be taken)~n", [Name]),
+            WorkerPid
+    end.
 
 initialize_server_state(Lower, Upper, NumWorkers) ->
     #{
