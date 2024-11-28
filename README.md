@@ -1,8 +1,10 @@
-# DPT AE1
+# DPT AE
 
-C+OpenMP vs Go
+## Stage 1
 
-## Overview
+`OpenMP` vs `Go`
+
+### Overview
 
 This tests the performance of the different parallelism models provided by the OpenMP C library and the channels and go routines offered in Go.
 
@@ -13,3 +15,11 @@ Both versions for both languages were tested with the three different datasets, 
 - `DS2` 1..30000
 - `DS3` 1..60000
 
+
+## Stage 2
+
+`Erlang`
+
+This tests the performance of the Erlang's actor model for parallelism.
+
+The task and stasets used in this evaluation are the same as in stage 1.
