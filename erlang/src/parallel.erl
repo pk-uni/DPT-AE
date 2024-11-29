@@ -6,7 +6,7 @@
 start(Lower, Upper, NumWorkers) ->
     StartPid = self(),
     spawn(fun() ->
-        io:format("Starting program with PID ~p~n", [self()]),
+        % io:format("Starting program with PID ~p~n", [self()]),
         MainPid = self(),
         % setup the server and supervisor
         ServerPid = spawn(fun() -> server(initialize_server_state(Lower, Upper, MainPid)) end),
@@ -17,7 +17,6 @@ start(Lower, Upper, NumWorkers) ->
 
         receive
             {done, Time} ->
-                io:format("runtime:~p~n", [Time]),
                 StartPid ! {runtime, Time},
                 ok
         end
@@ -35,7 +34,8 @@ sumTotient(SupervisorPid, ParentPid) ->
             % tell supervisor to shut down workers
             SupervisorPid ! shutdown,
             Sum = lists:sum(Results),
-            io:format("Sum of totients: ~p~n", [Sum])
+            % io:format("Sum of totients: ~p~n", [Sum]),
+            Sum
     end,
 
     Time = printElapsed(S, US),
@@ -48,14 +48,14 @@ supervisor(ServerPid, NumWorkers) ->
 
 supervisor_loop(ServerPid, NumWorkers, WorkerInfo) ->
     receive
-        {'DOWN', Ref, process, OldPid, Reason} ->
+        {'DOWN', Ref, process, OldPid, _Reason} ->
             case maps:get(Ref, WorkerInfo, not_found) of
                 % should not be reachable
                 not_found ->
                     supervisor_loop(ServerPid, NumWorkers, WorkerInfo);
                 % worker N has died
                 N ->
-                    io:format("Worker ~p has died due to ~p~n", [N, Reason]),
+                    % io:format("Worker ~p has died due to ~p~n", [N, Reason]),
                     maps:remove(Ref, WorkerInfo),
 
                     {NewPid, NewRef} = start_worker(ServerPid, N),

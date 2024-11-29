@@ -26,13 +26,10 @@ clean:
 	rm -rf $(EBIN_DIR)/*.beam erl_crash.dump
 
 test-sequential:
-	erl -noshell -pa $(EBIN_DIR) -eval 'test_sequential:run_sequential_experiments(), init:stop().'
+	erl -noshell -pa $(EBIN_DIR) -eval 'test_sequential:run_DS1(), init:stop().'
 
 test-parallel:
-	erl -noshell -pa $(EBIN_DIR) -eval 'test_parallel:run_parallel_experiments(), init:stop().'
+	erl -noshell -pa $(EBIN_DIR) -eval 'test_parallel:run_DS1(), init:stop().'
 
 test-chaos:
-	erl -noshell -pa $(EBIN_DIR) -eval 'test_chaos:run_chaos_experiments(), init:stop().'
-
-test-all:
-	erl -noshell -pa $(EBIN_DIR) -eval 'test:run_all(), init:stop().'
+	erl -noshell -pa $(EBIN_DIR) -eval 'test_chaos:run_experiment(), init:stop().'

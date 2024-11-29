@@ -10,10 +10,7 @@ run_DS2() ->
     run_experiment("DS2", 1, 30000).
 
 run_experiment(Dataset, Lower, Upper) ->
-    io:format(
-        "Running sequential test for Dataset ~p (range: ~p to ~p)~n",
-        [Dataset, Lower, Upper]
-    ),
+    % io:format("Running sequential test for Dataset ~p (range: ~p to ~p)~n",[Dataset, Lower, Upper]),
 
     lists:foreach(
         fun(_) ->

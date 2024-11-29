@@ -2,7 +2,7 @@
 .PHONY: all c-build go-build clean run-experiments
 
 # Default target builds everything
-all: c-build go-build
+all: c-build go-build erl-build
 
 # Build C implementations
 c-build:
@@ -13,6 +13,11 @@ c-build:
 go-build:
 	@echo "Building Go implementations..."
 	@$(MAKE) -C go
+
+# Build Go implementations
+erl-build:
+	@echo "Building Erlang implementations..."
+	@$(MAKE) -C erlang
 
 # Run all experiments
 run-experiments: all

@@ -14,10 +14,7 @@ run_DS3() ->
     run_parallel_test("DS3", 1, 6000, [16, 32]).
 
 run_parallel_test(Dataset, Lower, Upper, WorkerCounts) ->
-    io:format(
-        "Running parallel tests for Dataset ~p (range: ~p to ~p)~n",
-        [Dataset, Lower, Upper]
-    ),
+    % io:format("Running parallel tests for Dataset ~p (range: ~p to ~p)~n", [Dataset, Lower, Upper]),
 
     lists:foreach(
         fun(NumWorkers) ->
