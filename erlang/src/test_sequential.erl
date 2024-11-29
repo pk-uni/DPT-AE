@@ -1,7 +1,5 @@
 -module(test_sequential).
--export([
-    run_sequential_experiments/0
-]).
+-export([run_sequential_experiments/0]).
 
 -define(DATASETS, [1500, 3000]).
 -define(NUM_RUNS, 5).

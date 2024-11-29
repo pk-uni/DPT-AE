@@ -1,4 +1,4 @@
--module(test).
+-module(test_chaos).
 -export([run_chaos_experiments/0]).
 
 -define(DATASETS, [1500, 3000, 6000]).
