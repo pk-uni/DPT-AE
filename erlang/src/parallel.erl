@@ -6,100 +6,165 @@
 start(Lower, Upper, NumWorkers) ->
     spawn(fun() ->
         io:format("Starting program with PID ~p~n", [self()]),
-        sumTotient(Lower, Upper, NumWorkers)
+        MainPid = self(),
+        % setup the server and supervisor
+        ServerPid = spawn(fun() -> server(initialize_server_state(Lower, Upper, MainPid)) end),
+        SupervisorPid = spawn(fun() -> supervisor(ServerPid, NumWorkers) end),
+
+        % starts the computation
+        sumTotient(SupervisorPid, MainPid),
+
+        receive
+            {done, Time} ->
+                io:format("runtime:~p~n", [Time]),
+                ok
+        end
     end).
 
-sumTotient(Lower, Upper, NumWorkers) ->
+sumTotient(SupervisorPid, ParentPid) ->
     {_, S, US} = os:timestamp(),
-
-    ServerState = initialize_server_state(Lower, Upper, NumWorkers),
-
-    ServerPid = spawn(fun() -> server(ServerState) end),
-    Workers = [spawn_and_register_worker(ServerPid, N) || N <- lists:seq(1, NumWorkers)],
 
     receive
         {done, Results} ->
-            shutdown_workers(Workers),
+            % tell supervisor to shut down workers
+            SupervisorPid ! shutdown,
             Sum = lists:sum(Results),
             io:format("Sum of totients: ~p~n", [Sum])
     end,
 
-    printElapsed(S, US).
+    Time = printElapsed(S, US),
+    ParentPid ! {done, Time}.
 
-% spawn_and_register_worker(ServerPid, N) ->
-%     WorkerPid = spawn(fun() -> worker(ServerPid) end),
-%     Name = workerName(N),
-%     register(Name, WorkerPid),
-%     WorkerPid.
+supervisor(ServerPid, NumWorkers) ->
+    % start workers and enter main loop
+    WorkerInfo = start_workers(ServerPid, NumWorkers, #{}),
+    supervisor_loop(ServerPid, NumWorkers, WorkerInfo).
 
-spawn_and_register_worker(ServerPid, N) ->
-    WorkerPid = spawn(fun() -> worker(ServerPid) end),
-    Name = workerName(N),
-    case register(Name, WorkerPid) of
-        true ->
-            io:format("Registered worker ~p with PID ~p~n", [Name, WorkerPid]),
-            WorkerPid;
-        false ->
-            io:format("Failed to register worker ~p (name might be taken)~n", [Name]),
-            WorkerPid
+supervisor_loop(ServerPid, NumWorkers, WorkerInfo) ->
+    receive
+        {'DOWN', Ref, process, OldPid, Reason} ->
+            case maps:get(Ref, WorkerInfo, not_found) of
+                % should not be reachable
+                not_found ->
+                    supervisor_loop(ServerPid, NumWorkers, WorkerInfo);
+                % worker N has died
+                N ->
+                    io:format("Worker ~p has died due to ~p~n", [N, Reason]),
+                    maps:remove(Ref, WorkerInfo),
+
+                    {NewPid, NewRef} = start_worker(ServerPid, N),
+                    NewWorkerInfo = WorkerInfo#{NewRef => N},
+
+                    ServerPid ! {worker_restarted, OldPid, NewPid},
+
+                    supervisor_loop(ServerPid, NumWorkers, NewWorkerInfo)
+            end;
+        shutdown ->
+            % kill all workers
+            maps:foreach(
+                fun(_Ref, WorkerNum) ->
+                    WorkerPid = whereis(workerName(WorkerNum)),
+                    WorkerPid ! {stop, self()}
+                end,
+                WorkerInfo
+            )
     end.
 
-initialize_server_state(Lower, Upper, NumWorkers) ->
+start_workers(ServerPid, NumWorkers, WorkerInfo) ->
+    % start and track workers in a map
+    lists:foldl(
+        fun(N, Acc) ->
+            {_WorkerPid, Ref} = start_worker(ServerPid, N),
+            maps:put(Ref, N, Acc)
+        end,
+        WorkerInfo,
+        lists:seq(1, NumWorkers)
+    ).
+
+start_worker(ServerPid, WorkerNum) ->
+    % start a worker and register it
+    Pid = spawn(fun() -> worker(ServerPid) end),
+
+    % unregister name if it is already registered
+    WorkerName = workerName(WorkerNum),
+    case whereis(WorkerName) of
+        undefined -> ok;
+        _ -> unregister(WorkerName)
+    end,
+    register(WorkerName, Pid),
+
+    Ref = erlang:monitor(process, Pid),
+    {Pid, Ref}.
+
+initialize_server_state(Lower, Upper, ParentPid) ->
     #{
         current => Lower,
         upper => Upper,
         results => [],
-        active_workers => NumWorkers,
-        parent => self()
+        worker_tasks => #{},
+        parent => ParentPid
     }.
-
-shutdown_workers(Workers) ->
-    [WorkerPid ! {stop, self()} || WorkerPid <- Workers],
-    wait_workers(length(Workers)).
-
-wait_workers(0) ->
-    ok;
-wait_workers(N) ->
-    receive
-        worker_stopped -> wait_workers(N - 1)
-    end.
 
 server(
     #{
         current := Current,
         upper := Upper,
         results := Results,
-        active_workers := ActiveWorkers,
+        worker_tasks := WorkerTasks,
         parent := ParentPid
     } = State
 ) ->
     receive
         % worker is ready & we have work
         {ready, WorkerPid} when Current =< Upper ->
-            WorkerPid ! {work, Current},
-            server(State#{current := Current + 1});
-        % worker is ready & we have no work
-        {ready, _WorkerPid} ->
-            server(State);
-        % worker has completed work & we have no more work & is the last worker
-        {result, Count, _WorkerPid} when Current > Upper, ActiveWorkers =:= 1 ->
-            ParentPid ! {done, [Count | Results]};
-        % worker has completed work & we have no more work & is not the last worker
-        {result, Count, _WorkerPid} when Current > Upper ->
-            server(State#{
-                results := [Count | Results],
-                active_workers := ActiveWorkers - 1
-            });
-        % worker has completed work & we have more work
-        {result, Count, WorkerPid} ->
+            NewWorkerTasks = maps:put(WorkerPid, Current, WorkerTasks),
             WorkerPid ! {work, Current},
             server(State#{
                 current := Current + 1,
-                results := [Count | Results]
-            })
+                worker_tasks := NewWorkerTasks
+            });
+        % worker is ready & we have no work
+        {ready, _WorkerPid} ->
+            server(State);
+        % worker has completed work & we have no more work
+        {result, Count, WorkerPid} when Current > Upper ->
+            NewWorkerTasks = maps:remove(WorkerPid, WorkerTasks),
+
+            case maps:size(NewWorkerTasks) of
+                %  is the last worker
+                0 ->
+                    ParentPid ! {done, [Count | Results]};
+                %  is not the last worker
+                _ ->
+                    server(State#{
+                        results := [Count | Results],
+                        worker_tasks := NewWorkerTasks
+                    })
+            end;
+        % worker has completed work & we have more work
+        {result, Count, WorkerPid} ->
+            NewWorkerTasks = maps:remove(WorkerPid, WorkerTasks),
+            WorkerPid ! {work, Current},
+            server(State#{
+                current := Current + 1,
+                results := [Count | Results],
+                worker_tasks := maps:put(WorkerPid, Current, NewWorkerTasks)
+            });
+        % worker has been restarted
+        {worker_restarted, OldPid, NewPid} ->
+            % if the worker was working on a task, reassign it to the new worker
+            case maps:get(OldPid, WorkerTasks, none) of
+                none ->
+                    server(State);
+                TaskNum ->
+                    NewWorkerTasks = maps:remove(OldPid, WorkerTasks),
+                    NewPid ! {work, TaskNum},
+                    server(State#{worker_tasks := maps:put(NewPid, TaskNum, NewWorkerTasks)})
+            end
     end.
 
 worker(ServerPid) ->
+    % tell server we are ready
     ServerPid ! {ready, self()},
     worker_loop(ServerPid).
 
