@@ -4,6 +4,7 @@
 -export([start/3]).
 
 start(Lower, Upper, NumWorkers) ->
+    StartPid = self(),
     spawn(fun() ->
         io:format("Starting program with PID ~p~n", [self()]),
         MainPid = self(),
@@ -17,9 +18,14 @@ start(Lower, Upper, NumWorkers) ->
         receive
             {done, Time} ->
                 io:format("runtime:~p~n", [Time]),
+                StartPid ! {runtime, Time},
                 ok
         end
-    end).
+    end),
+
+    receive
+        {runtime, T} -> {runtime, T}
+    end.
 
 sumTotient(SupervisorPid, ParentPid) ->
     {_, S, US} = os:timestamp(),

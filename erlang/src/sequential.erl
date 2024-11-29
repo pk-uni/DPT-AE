@@ -51,4 +51,5 @@ sumTotient(Lower, Upper) ->
     ),
     io:format("Sum of totients: ~p~n", [Res]),
     Time = printElapsed(S, US),
-    io:format("runtime:~p~n", [Time]).
+    io:format("runtime:~p~n", [Time]),
+    {runtime, Time}.
