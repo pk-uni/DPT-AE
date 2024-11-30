@@ -13,17 +13,17 @@ start(Lower, Upper, NumWorkers) ->
         SupervisorPid = spawn(fun() -> supervisor(ServerPid, NumWorkers) end),
 
         % starts the computation
-        sumTotient(SupervisorPid, MainPid),
+        Result = sumTotient(SupervisorPid, MainPid),
 
         receive
             {done, Time} ->
-                StartPid ! {runtime, Time},
+                StartPid ! {runtime, Time, Result},
                 ok
         end
     end),
 
     receive
-        {runtime, T} -> {runtime, T}
+        {runtime, T, Result} -> {runtime, T, Result}
     end.
 
 sumTotient(SupervisorPid, ParentPid) ->

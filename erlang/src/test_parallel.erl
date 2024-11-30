@@ -20,8 +20,9 @@ run_parallel_test(Dataset, Lower, Upper, WorkerCounts) ->
         fun(NumWorkers) ->
             lists:foreach(
                 fun(_) ->
-                    {runtime, T} = parallel:start(Lower, Upper, NumWorkers),
-                    io:format("~s,parallel,~.6f,~p~n", [Dataset, T, NumWorkers])
+                    {runtime, T, Result} = parallel:start(Lower, Upper, NumWorkers),
+                    io:format("~s,parallel,~.6f,~p~n", [Dataset, T, NumWorkers]),
+                    Result
                 end,
                 lists:seq(1, ?NUM_RUNS)
             )
