@@ -67,12 +67,12 @@ supervisor_loop(ServerPid, NumWorkers, WorkerInfo) ->
             end;
         shutdown ->
             % kill all workers
-            maps:foreach(
+            lists:foreach(
                 fun(_Ref, WorkerNum) ->
                     WorkerPid = whereis(workerName(WorkerNum)),
                     WorkerPid ! {stop, self()}
                 end,
-                WorkerInfo
+                maps:to_list(WorkerInfo)
             )
     end.
 
