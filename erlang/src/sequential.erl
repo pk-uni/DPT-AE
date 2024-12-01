@@ -40,14 +40,12 @@ printElapsed(S, US) ->
 
     Seconds = S3 - S,
     Microseconds = US3 - US,
-    % io:format("Time taken in Secs, MicroSecs ~p ~p~n", [Seconds, Microseconds]),
     Seconds + Microseconds / 1000000.
 
 %% sumTotient lower upper = sum (map euler [lower, lower+1 .. upper])
 sumTotient(Lower, Upper) ->
     {_, S, US} = os:timestamp(),
-    _Res = lists:sum(lists:map(fun euler/1, lists:seq(Lower, Upper))),
-    % io:format("Sum of totients: ~p~n", [Res]),
+    Res = lists:sum(lists:map(fun euler/1, lists:seq(Lower, Upper))),
+    io:format("Sum of totients: ~p~n", [Res]),
     Time = printElapsed(S, US),
-    % io:format("runtime:~p~n", [Time]),
     {runtime, Time}.

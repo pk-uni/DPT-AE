@@ -29,17 +29,19 @@ start(Lower, Upper, NumWorkers) ->
 sumTotient(SupervisorPid, ParentPid) ->
     {_, S, US} = os:timestamp(),
 
-    receive
-        {done, Results} ->
-            % tell supervisor to shut down workers
-            SupervisorPid ! shutdown,
-            Sum = lists:sum(Results),
-            % io:format("Sum of totients: ~p~n", [Sum]),
-            Sum
-    end,
+    Result =
+        receive
+            {done, Results} ->
+                % tell supervisor to shut down workers
+                SupervisorPid ! shutdown,
+                Sum = lists:sum(Results),
+                io:format("Sum of totients: ~p~n", [Sum]),
+                Sum
+        end,
 
     Time = printElapsed(S, US),
-    ParentPid ! {done, Time}.
+    ParentPid ! {done, Time},
+    Result.
 
 supervisor(ServerPid, NumWorkers) ->
     % start workers and enter main loop
