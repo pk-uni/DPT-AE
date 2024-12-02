@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-RESULTS_DIR = "data"
+RESULTS_DIR = "data/stage-1"
 
 config = {
     "title.fontsize": 24,
